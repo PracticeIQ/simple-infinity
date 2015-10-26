@@ -4,10 +4,10 @@
 var checker = require('ember-cli-version-checker');
 
 module.exports = {
-  name: 'ember-infinity',
+  name: 'simple-infinity',
 
   init: function() {
-    checker.assertAbove(this, '0.2.0');
+    checker.assertAbove(this, '0.1.0');
   },
 
   included: function(app) {
