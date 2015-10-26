@@ -3,7 +3,7 @@ import { emberDataVersionIs } from 'ember-version-is';
 
 const keys = Object.keys || Ember.keys;
 /**
-  The Ember Infinity Route Mixin enables an application route to load paginated
+  The Simple Infinity Route Mixin enables an application route to load
   records for the route `model` as triggered by the controller (or Infinity Loader
   component).
 
@@ -21,14 +21,6 @@ export default Ember.Mixin.create({
     @default 25
   */
   _perPage: 25,
-
-  /**
-    @private
-    @property currentPage
-    @type Integer
-    @default 0
-  */
-  currentPage: 0,
 
   /**
     @private
@@ -60,7 +52,22 @@ export default Ember.Mixin.create({
     @type Integer
     @default 0
   */
-  _totalPages: 0,
+ // _totalPages: 0,
+
+  /**
+   * How many items have been fetched thus far. This is the 'skip' count.
+   *
+   *  @private
+   *  @property _totalItemCount
+   *  @type Integer
+   *  @default 0
+   */
+  _totalItemCount: 0,
+
+  /**
+   * The name of the total items parameter, ie. 'skip'.
+   */
+  totalItemParam: 'skip',
 
   /**
     @private
@@ -82,25 +89,9 @@ export default Ember.Mixin.create({
    * Name of the "per page" param in the
    * resource request payload
    * @type {String}
-   * @default  "per_page"
+   * @default  "take"
    */
-  perPageParam: 'per_page',
-
-  /**
-   * Name of the "page" param in the
-   * resource request payload
-   * @type {String}
-   * @default "page"
-   */
-  pageParam: 'page',
-
-  /**
-   * Path of the "total pages" param in
-   * the HTTP response
-   * @type {String}
-   * @default "meta.total_pages"
-   */
-  totalPagesParam: 'meta.total_pages',
+  perPageParam: 'take',
 
   /**
    * The supported findMethod name for
@@ -111,17 +102,13 @@ export default Ember.Mixin.create({
    */
   _storeFindMethod: 'query',
 
-  /**
-    @private
-    @property _canLoadMore
-    @type Boolean
-    @default false
-  */
-  _canLoadMore: Ember.computed('_totalPages', 'currentPage', function() {
-    var totalPages  = this.get('_totalPages');
-    var currentPage = this.get('currentPage');
-    return (totalPages && currentPage !== undefined) ? (currentPage < totalPages) : false;
-  }),
+  /*
+   * Instead of tracking total pages and current pages, we simply keep fetching until the
+   * server returns no more items. Now this property can be the flag that says whether
+   * we've fetched zero items or not. Defaulting to true ensures we always fetch at
+   * least once.
+   */
+  _canLoadMore: true,
 
   /**
     Use the infinityModel method in the place of `this.store.find('model')` to
@@ -152,11 +139,11 @@ export default Ember.Mixin.create({
     this.set('_infinityModelName', modelName);
 
     options = options ? Ember.merge({}, options) : {};
-    var startingPage = options.startingPage === undefined ? 1 : options.startingPage;
+    var startingItem = options.startingItem === undefined ? 0 : options.startingItem;
     var perPage      = options.perPage || this.get('_perPage');
     var modelPath    = options.modelPath || this.get('_modelPath');
 
-    delete options.startingPage;
+    delete options.startingItem;
     delete options.perPage;
     delete options.modelPath;
 
@@ -166,7 +153,7 @@ export default Ember.Mixin.create({
 
     var requestPayloadBase = {};
     requestPayloadBase[this.get('perPageParam')] = perPage;
-    requestPayloadBase[this.get('pageParam')] = startingPage;
+    requestPayloadBase[this.get('totalItemParam')] = startingItem;
 
     if (typeof boundParams === 'object') {
       this.set('_boundParams', boundParams);
@@ -178,14 +165,21 @@ export default Ember.Mixin.create({
 
     promise.then(
       infinityModel => {
-        var totalPages = infinityModel.get(this.get('totalPagesParam'));
-        this.set('currentPage', startingPage);
-        this.set('_totalPages', totalPages);
+        let count = infinityModel.get("length");
+
+        if (count === 0) {
+          this.set("_canLoadMore", false);
+        }
+
+        let currentCount = this.get("_totalItemCount");
+        let newTotal = currentCount + count;
+        this.set("_totalItemCount", newTotal);
+
         infinityModel.set('reachedInfinity', !this.get('_canLoadMore'));
+
         if(this.infinityModelUpdated) {
           Ember.run.scheduleOnce('afterRender', this, 'infinityModelUpdated', {
-            lastPageLoaded: startingPage,
-            totalPages: totalPages,
+            lastItemLoaded: newTotal,
             newObjects: infinityModel
           });
         }
@@ -205,9 +199,8 @@ export default Ember.Mixin.create({
    @return {Boolean}
    */
   _infinityLoad() {
-    var nextPage    = this.get('currentPage') + 1;
+    var nextItem    = this.get("_totalItemCount") + 1;
     var perPage     = this.get('_perPage');
-    var totalPages  = this.get('_totalPages');
     var modelName   = this.get('_infinityModelName');
     var options     = this.get('_extraParams');
     var boundParams = this.get('_boundParams');
@@ -217,7 +210,7 @@ export default Ember.Mixin.create({
 
       var requestPayloadBase = {};
       requestPayloadBase[this.get('perPageParam')] = perPage;
-      requestPayloadBase[this.get('pageParam')] = nextPage;
+      requestPayloadBase[this.get('totalItemParam')] = nextItem;
 
       options = this._includeBoundParams(options, boundParams);
       var params = Ember.merge(requestPayloadBase, this.get('_extraParams'));
@@ -227,13 +220,23 @@ export default Ember.Mixin.create({
       promise.then(
         newObjects => {
 
+          let count = newObjects.get("length");
+
+          if (count === 0) {
+            this.set("_canLoadMore", false);
+          }
+
+          let currentCount = this.get("_totalItemCount");
+          let newTotal = currentCount + count;
+          this.set("_totalItemCount", newTotal);
+
+
           this.updateInfinityModel(newObjects);
           this.set('_loadingMore', false);
-          this.set('currentPage', nextPage);
+
           if(this.infinityModelUpdated) {
             Ember.run.scheduleOnce('afterRender', this, 'infinityModelUpdated', {
-              lastPageLoaded: nextPage,
-              totalPages: totalPages,
+              lastItemLoaded: newTotal,
               newObjects: newObjects
             });
           }
@@ -241,7 +244,7 @@ export default Ember.Mixin.create({
             this.set(this.get('_modelPath') + '.reachedInfinity', true);
             if(this.infinityModelLoaded) {
               Ember.run.scheduleOnce('afterRender', this, 'infinityModelLoaded', {
-                totalPages: totalPages
+                totalItems: newTotal
               });
             }
           }
@@ -255,7 +258,7 @@ export default Ember.Mixin.create({
       if (!this.get('_canLoadMore')) {
         this.set(this.get('_modelPath') + '.reachedInfinity', true);
         if(this.infinityModelLoaded) {
-          Ember.run.scheduleOnce('afterRender', this, 'infinityModelLoaded', { totalPages: totalPages });
+          Ember.run.scheduleOnce('afterRender', this, 'infinityModelLoaded', { totalItems: nextItem });
         }
       }
     }
