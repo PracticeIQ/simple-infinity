@@ -11,7 +11,7 @@
     "build": "ember build",
     "test": "ember try:testall"
   },
-  "repository": "https://github.com/jersmith/simple-infinity",
+  "repository": "https://github.com/PracticeIQ/simple-infinity",
   "engines": {
     "node": ">= 0.10.0"
   },
