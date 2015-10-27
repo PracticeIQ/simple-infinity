@@ -130,11 +130,15 @@ export default Ember.Mixin.create({
       this.set('_storeFindMethod', 'find');
     }
 
-    if (Ember.isEmpty(this.store) || Ember.isEmpty(this.store[this._storeFindMethod])){
+    if (Ember.isEmpty(this.store) || Ember.isEmpty(this.store[this.get("_storeFindMethod")])){
       throw new Ember.Error("Ember Infinity: Ember Data store is not available to infinityModel");
     } else if (modelName === undefined) {
       throw new Ember.Error("Ember Infinity: You must pass a Model Name to infinityModel");
     }
+
+    this.set("_totalItemCount", 0);
+    this.set("_canLoadMore", false);
+    this.set("reachedInfinity", false);
 
     this.set('_infinityModelName', modelName);
 
@@ -161,7 +165,7 @@ export default Ember.Mixin.create({
     }
 
     var params = Ember.merge(requestPayloadBase, options);
-    let promise = this.store[this._storeFindMethod](modelName, params);
+    let promise = this.store[this.get("_storeFindMethod")](modelName, params);
 
     promise.then(
       infinityModel => {
