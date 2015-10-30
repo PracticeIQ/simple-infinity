@@ -47,14 +47,6 @@ export default Ember.Mixin.create({
   _loadingMore: false,
 
   /**
-    @private
-    @property _totalPages
-    @type Integer
-    @default 0
-  */
- // _totalPages: 0,
-
-  /**
    * How many items have been fetched thus far. This is the 'skip' count.
    *
    *  @private
@@ -137,7 +129,7 @@ export default Ember.Mixin.create({
     }
 
     this.set("_totalItemCount", 0);
-    this.set("_canLoadMore", false);
+    this.set("_canLoadMore", true);
     this.set("reachedInfinity", false);
 
     this.set('_infinityModelName', modelName);
