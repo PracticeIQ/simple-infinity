@@ -195,7 +195,7 @@ export default Ember.Mixin.create({
    @return {Boolean}
    */
   _infinityLoad() {
-    var nextItem    = this.get("_totalItemCount") + 1;
+    var skipItems   = this.get("_totalItemCount");
     var perPage     = this.get('_perPage');
     var modelName   = this.get('_infinityModelName');
     var options     = this.get('_extraParams');
@@ -206,7 +206,7 @@ export default Ember.Mixin.create({
 
       var requestPayloadBase = {};
       requestPayloadBase[this.get('perPageParam')] = perPage;
-      requestPayloadBase[this.get('totalItemParam')] = nextItem;
+      requestPayloadBase[this.get('totalItemParam')] = skipItems;
 
       options = this._includeBoundParams(options, boundParams);
       var params = Ember.merge(requestPayloadBase, this.get('_extraParams'));
@@ -254,7 +254,7 @@ export default Ember.Mixin.create({
       if (!this.get('_canLoadMore')) {
         this.set(this.get('_modelPath') + '.reachedInfinity', true);
         if(this.infinityModelLoaded) {
-          Ember.run.scheduleOnce('afterRender', this, 'infinityModelLoaded', { totalItems: nextItem });
+          Ember.run.scheduleOnce('afterRender', this, 'infinityModelLoaded', { totalItems: skipItems });
         }
       }
     }
