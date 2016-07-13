@@ -102,6 +102,8 @@ export default Ember.Mixin.create({
    */
   _canLoadMore: true,
 
+  _storeService: null,
+
   /**
     Use the infinityModel method in the place of `this.store.find('model')` to
     initialize the Infinity Model for your route.
@@ -112,7 +114,9 @@ export default Ember.Mixin.create({
     @param {Object} boundParams Optional, any route properties to be included as additional params.
     @return {Ember.RSVP.Promise}
   */
-  infinityModel(modelName, options, boundParams) {
+  infinityModel(modelName, options, boundParams, storeService) {
+    if (storeService) this.set('_storeService', storeService);
+    let store = storeService || this.store;
 
     if (emberDataVersionIs('greaterThan', '1.0.0-beta.19.2') && emberDataVersionIs('lessThan', '1.13.4')) {
       throw new Ember.Error("Ember Infinity: You are using an unsupported version of Ember Data.  Please upgrade to at least 1.13.4 or downgrade to 1.0.0-beta.19.2");
@@ -122,7 +126,8 @@ export default Ember.Mixin.create({
       this.set('_storeFindMethod', 'find');
     }
 
-    if (Ember.isEmpty(this.store) || Ember.isEmpty(this.store[this.get("_storeFindMethod")])){
+
+    if (Ember.isEmpty(store) || Ember.isEmpty(store[this.get("_storeFindMethod")])){
       throw new Ember.Error("Ember Infinity: Ember Data store is not available to infinityModel");
     } else if (modelName === undefined) {
       throw new Ember.Error("Ember Infinity: You must pass a Model Name to infinityModel");
@@ -157,7 +162,7 @@ export default Ember.Mixin.create({
     }
 
     var params = Ember.merge(requestPayloadBase, options);
-    let promise = this.store[this.get("_storeFindMethod")](modelName, params);
+    let promise = store[this.get("_storeFindMethod")](modelName, params);
 
     promise.then(
       infinityModel => {
@@ -200,6 +205,7 @@ export default Ember.Mixin.create({
     var modelName   = this.get('_infinityModelName');
     var options     = this.get('_extraParams');
     var boundParams = this.get('_boundParams');
+    let store = this.get('_storeService') || this.store;
 
     if (!this.get('_loadingMore') && this.get('_canLoadMore')) {
       this.set('_loadingMore', true);
@@ -211,7 +217,7 @@ export default Ember.Mixin.create({
       options = this._includeBoundParams(options, boundParams);
       var params = Ember.merge(requestPayloadBase, this.get('_extraParams'));
 
-      let promise = this.store[this._storeFindMethod](modelName, params);
+      let promise = store[this._storeFindMethod](modelName, params);
 
       promise.then(
         newObjects => {
