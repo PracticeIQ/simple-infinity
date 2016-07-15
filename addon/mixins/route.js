@@ -102,7 +102,7 @@ export default Ember.Mixin.create({
    */
   _canLoadMore: true,
 
-  _storeService: null,
+  _storeService: -1,
 
   /**
     Use the infinityModel method in the place of `this.store.find('model')` to
@@ -115,7 +115,12 @@ export default Ember.Mixin.create({
     @return {Ember.RSVP.Promise}
   */
   infinityModel(modelName, options, boundParams, storeService) {
-    if (storeService) this.set('_storeService', storeService);
+    if (storeService) {
+        this.set('_storeService', storeService);
+    } else {
+        this.set('_storeService', null);
+    }
+
     let store = storeService || this.store;
 
     if (emberDataVersionIs('greaterThan', '1.0.0-beta.19.2') && emberDataVersionIs('lessThan', '1.13.4')) {
@@ -125,7 +130,6 @@ export default Ember.Mixin.create({
     if (emberDataVersionIs('lessThan', '1.13.0')) {
       this.set('_storeFindMethod', 'find');
     }
-
 
     if (Ember.isEmpty(store) || Ember.isEmpty(store[this.get("_storeFindMethod")])){
       throw new Ember.Error("Ember Infinity: Ember Data store is not available to infinityModel");
@@ -162,6 +166,7 @@ export default Ember.Mixin.create({
     }
 
     var params = Ember.merge(requestPayloadBase, options);
+
     let promise = store[this.get("_storeFindMethod")](modelName, params);
 
     promise.then(
@@ -207,8 +212,11 @@ export default Ember.Mixin.create({
     var boundParams = this.get('_boundParams');
     let store = this.get('_storeService') || this.store;
 
+    if (store === -1) return;
+
     if (!this.get('_loadingMore') && this.get('_canLoadMore')) {
       this.set('_loadingMore', true);
+      this.set('reachedInfinity', false);
 
       var requestPayloadBase = {};
       requestPayloadBase[this.get('perPageParam')] = perPage;
@@ -217,7 +225,7 @@ export default Ember.Mixin.create({
       options = this._includeBoundParams(options, boundParams);
       var params = Ember.merge(requestPayloadBase, this.get('_extraParams'));
 
-      let promise = store[this._storeFindMethod](modelName, params);
+      let promise = store[this.get('_storeFindMethod')](modelName, params);
 
       promise.then(
         newObjects => {
