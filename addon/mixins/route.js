@@ -173,7 +173,7 @@ export default Ember.Mixin.create({
       infinityModel => {
         let count = infinityModel.get("length");
 
-        if (count === 0) {
+        if (count === 0 || count < perPage) {
           this.set("_canLoadMore", false);
         }
 
@@ -232,7 +232,7 @@ export default Ember.Mixin.create({
 
           let count = newObjects.get("length");
 
-          if (count === 0) {
+          if (count === 0 || count < perPage) {
             this.set("_canLoadMore", false);
           }
 
