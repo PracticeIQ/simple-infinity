@@ -115,6 +115,8 @@ export default Ember.Mixin.create({
     @return {Ember.RSVP.Promise}
   */
   infinityModel(modelName, options, boundParams, storeService) {
+    this.set('_loadingMore', true);
+
     if (storeService) {
         this.set('_storeService', storeService);
     } else {
@@ -189,6 +191,8 @@ export default Ember.Mixin.create({
             newObjects: infinityModel
           });
         }
+
+        this.set('_loadingMore', false);
       },
       () => {
         throw new Ember.Error("Ember Infinity: Could not fetch Infinity Model. Please check your serverside configuration.");
