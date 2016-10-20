@@ -173,6 +173,7 @@ export default Ember.Mixin.create({
 
     promise.then(
       infinityModel => {
+        if(this.get('isDestroyed')) return;
         let count = infinityModel.get("length");
 
         if (count === 0 || count < perPage) {
@@ -209,6 +210,7 @@ export default Ember.Mixin.create({
    @return {Boolean}
    */
   _infinityLoad() {
+
     var skipItems   = this.get("_totalItemCount");
     var perPage     = this.get('_perPage');
     var modelName   = this.get('_infinityModelName');
@@ -233,7 +235,7 @@ export default Ember.Mixin.create({
 
       promise.then(
         newObjects => {
-
+          if(this.get('isDestroyed')) return;
           let count = newObjects.get("length");
 
           if (count === 0 || count < perPage) {
